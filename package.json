@@ -1,0 +1,29 @@
+{
+  "name": "zexpress",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A TS-first Express API with Zod validation schemas and auth primitives",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "express",
+    "ts",
+    "typescript",
+    "api",
+    "routing"
+  ],
+  "author": "rodobre",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "zod": "^3.23.6"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.8",
+    "ts-node": "^10.9.2"
+  }
+}
