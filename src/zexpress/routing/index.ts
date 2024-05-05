@@ -1,14 +1,23 @@
 import { Router } from 'express'
 import type { NextFunction, RequestHandler, Request, Response } from 'express'
-import { cwd } from 'process'
+import fs from 'fs'
+import path from 'path'
+import process from 'process'
 
-const extractPath = (path: string) => {
-  const resolvedPath = `${__dirname.replace(cwd(), '')}/${path}`
-  console.log('Extracted path', __dirname, path, resolvedPath)
-  return resolvedPath
+interface RouterPathTuple {
+  router: Router
+  path: string
 }
 
-export const routers: Router[] = []
+export const routers: RouterPathTuple[] = []
+
+const normalizeAPIPath = (registeredPath: string) => {
+  function convertBracketsToColon(path: string): string {
+    return path.replace(/\[([^\[\]]+)\]/g, ':$1')
+  }
+
+  return convertBracketsToColon(registeredPath)
+}
 
 export class ChainableRouter<
   Q extends Request = Request,
@@ -17,15 +26,19 @@ export class ChainableRouter<
   private router: Router
   middlewares: Array<(req: Q, res: S, next: NextFunction) => any> = []
   constructor(router?: Router) {
-    if (!router) router = Router()
-    this.router = router
-    routers.push(this.router)
+    if (!router) {
+      router = Router()
+      this.router = router
+      routers.push({ router: this.router, path: '' })
+    } else {
+      this.router = router
+    }
   }
 
   pipe<R extends object, V extends Q = R & Q extends Q ? R & Q : never>(
     middleware: (req: Q, res: S) => R | Promise<R> | PromiseLike<R>
   ): ChainableRouter<V, S> {
-    const chain = new ChainableRouter<V, S>()
+    const chain = new ChainableRouter<V, S>(this.router)
     chain.middlewares = this.middlewares.concat(middleware)
     return chain
   }
@@ -35,8 +48,11 @@ export class ChainableRouter<
   ): RequestHandler {
     return (async (req: Q, res: S, next: NextFunction) => {
       for (const m of this.middlewares) {
+        if (res.headersSent) return
         req = Object.assign(req, await m(req, res, next))
       }
+
+      if (res.headersSent) return
       handler(req, res, next)
     }) as any as RequestHandler
   }
@@ -55,8 +71,7 @@ export class ChainableRouter<
     handler: RequestHandler
   ) {
     if (!this.router) throw new Error('Router not initialized')
-    const fullPath = extractPath(path)
-    return (this.router[method] as any)(fullPath, handler)
+    return (this.router[method] as any)(path, handler)
   }
 
   get(path: string, handler: (req: Q, res: S, next: NextFunction) => void) {
@@ -90,4 +105,43 @@ export class ChainableRouter<
   all(path: string, handler: (req: Q, res: S, next: NextFunction) => void) {
     return this.route('all', path, this.constructHandler(handler))
   }
+}
+
+const readdir = fs.readdirSync
+const stat = fs.statSync
+
+const stripUntilAPI = (filePath: string) => {
+  const apiLoc = filePath.indexOf('/api')
+  return apiLoc !== -1 ? path.dirname(filePath.slice(apiLoc)) : ''
+}
+
+export async function registerRouters() {
+  const apiDir = path.join(process.cwd(), 'src', 'api')
+  const dirs = await getDirectoriesRecursively(apiDir)
+
+  // Sort directories alphabetically
+  dirs.sort()
+
+  for (const dir of dirs) {
+    const indexPath = path.join(dir, 'index.ts')
+    if (fs.existsSync(indexPath)) {
+      await import(indexPath)
+      routers[routers.length - 1].path = normalizeAPIPath(
+        stripUntilAPI(indexPath)
+      )
+    }
+  }
+}
+
+async function getDirectoriesRecursively(dir: string): Promise<string[]> {
+  let dirs: string[] = []
+  for (const file of readdir(dir)) {
+    const filePath = path.join(dir, file)
+    if (stat(filePath).isDirectory()) {
+      dirs.push(filePath)
+      const subDirs = await getDirectoriesRecursively(filePath)
+      dirs = dirs.concat(subDirs)
+    }
+  }
+  return dirs
 }
