@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import type { NextFunction, RequestHandler, Request, Response } from 'express'
+import { constants } from 'http2'
 import fs from 'fs'
 import path from 'path'
 import process from 'process'
+import { accessLogger, errorLogger } from 'zexpress/logging'
 
 interface RouterPathTuple {
   router: Router
@@ -47,13 +49,58 @@ export class ChainableRouter<
     handler: (req: Q, res: S, next: NextFunction) => void
   ): RequestHandler {
     return (async (req: Q, res: S, next: NextFunction) => {
-      for (const m of this.middlewares) {
-        if (res.headersSent) return
-        req = Object.assign(req, await m(req, res, next))
-      }
+      let loggedAlready = false
 
-      if (res.headersSent) return
-      handler(req, res, next)
+      try {
+        for (const m of this.middlewares) {
+          if (res.headersSent) return
+          req = Object.assign(req, await m(req, res, next))
+        }
+
+        if (res.headersSent) return
+        handler(req, res, next)
+      } catch (e) {
+        const error = e instanceof Error ? e : new Error(String(e))
+        res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+
+        errorLogger.error({
+          method: req.method,
+          httpVersion: req.httpVersion,
+          httpStatus: res.statusCode,
+          routePath: req.originalUrl,
+          ip: req.ip,
+          error: {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause,
+          },
+        })
+
+        loggedAlready = true
+
+        if (res.headersSent) return
+        if (process.env.NODE_ENV === 'development') {
+          return res.send({
+            status: 'error',
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause,
+          })
+        } else {
+          return res.send({ status: 'error', message: 'Internal Server Error' })
+        }
+      } finally {
+        if (loggedAlready) return
+        accessLogger.info({
+          method: req.method,
+          httpVersion: req.httpVersion,
+          httpStatus: res.statusCode,
+          routePath: req.originalUrl,
+          ip: req.ip,
+        })
+      }
     }) as any as RequestHandler
   }
 

@@ -9,13 +9,19 @@ app.use(express.json())
 
 const main = async () => {
   await registerRouters().catch(console.error)
+  console.log(
+    '----------------------------------------------------------------'
+  )
   routers.forEach((router) => {
     app.use(router.path, router.router)
-    console.log('Mapped routes for path', router.path)
+    console.log('Mapped route:', router.path)
   })
 
   app.listen(port)
   console.log('Listening on port', port)
+  console.log(
+    '----------------------------------------------------------------'
+  )
 }
 
 main()
