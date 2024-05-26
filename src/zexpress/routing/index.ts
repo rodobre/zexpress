@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import process from 'process'
 import { accessLogger, errorLogger } from 'zexpress/logging'
+import { responseTimeMiddleware } from 'zexpress/timing'
 
 interface RouterPathTuple {
   router: Router
@@ -35,6 +36,9 @@ export class ChainableRouter<
     } else {
       this.router = router
     }
+
+    // Apply response time middleware to all routes
+    this.router.use(responseTimeMiddleware)
   }
 
   pipe<R extends object, V extends Q = R & Q extends Q ? R & Q : never>(

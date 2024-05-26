@@ -20,6 +20,7 @@
   "dependencies": {
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "on-headers": "^1.0.2",
     "winston": "^3.13.0",
     "winston-daily-rotate-file": "^5.0.0",
     "zod": "^3.23.6"
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^20.12.8",
+    "@types/on-headers": "^1.0.3",
     "tsx": "^4.9.0"
   }
 }
