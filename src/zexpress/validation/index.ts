@@ -15,20 +15,24 @@ export const makeValidationError = (
   return res.status(status).json(json)
 }
 
+type DataCarryType<T> = { data: T }
+
 export const validateProperty = <T extends z.ZodObject<any, any, any>>(
   schema: T,
   propertyKey: 'params' | 'query' | 'body'
-): ((req: Request, res: Response) => z.infer<T>) => {
+): ((req: Request, res: Response) => Promise<DataCarryType<z.infer<T>>>) => {
   return async (req: Request, res: Response) => {
+    console.log('Params', req.params)
+    console.log('props?', req[propertyKey], propertyKey)
     const result = schema.safeParse(req[propertyKey])
     if (!result.success) {
       makeValidationError(res, {
         status: constants.HTTP_STATUS_BAD_REQUEST,
         json: { location: propertyKey, validationResult: result.error },
       })
-      return {}
+      return { data: {} }
     }
 
-    return result.data
+    return { data: result.data }
   }
 }

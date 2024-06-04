@@ -9,7 +9,7 @@ chainableRouter
   .post('/', (req, res) =>
     res
       .status(200)
-      .send({ ...req.user, id: Math.floor(Math.random() * 1000000) })
+      .send({ ...req.data.user, id: Math.floor(Math.random() * 1000000) })
   )
 
 // Healthcheck
