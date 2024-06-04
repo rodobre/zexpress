@@ -30,7 +30,7 @@ export class ChainableRouter<
   middlewares: Array<(req: Q, res: S, next: NextFunction) => any> = []
   constructor(router?: Router) {
     if (!router) {
-      router = Router()
+      router = Router({ mergeParams: true })
       this.router = router
       routers.push({ router: this.router, path: '' })
     } else {

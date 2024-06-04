@@ -22,8 +22,6 @@ export const validateProperty = <T extends z.ZodObject<any, any, any>>(
   propertyKey: 'params' | 'query' | 'body'
 ): ((req: Request, res: Response) => Promise<DataCarryType<z.infer<T>>>) => {
   return async (req: Request, res: Response) => {
-    console.log('Params', req.params)
-    console.log('props?', req[propertyKey], propertyKey)
     const result = schema.safeParse(req[propertyKey])
     if (!result.success) {
       makeValidationError(res, {
