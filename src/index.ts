@@ -1,6 +1,8 @@
 import 'dotenv/config.js'
 import { registerRouters, routers } from 'src/zexpress/routing'
 import express from 'express'
+import { executeGraph } from 'decision-engine'
+import { graph } from 'decision-engine/testGraph'
 
 const app: express.Application = express()
 const port = process.env.PORT || 8000
@@ -22,6 +24,8 @@ const main = async () => {
   console.log(
     '----------------------------------------------------------------'
   )
+
+  console.log('Result', await executeGraph(graph, { helloe: 'world' }))
 }
 
 main()

@@ -13,7 +13,3 @@ export const SamplePostSchema = z.object({
       .max(512, 'Password length cannot exceed 512 characters'),
   }),
 })
-
-export const SamplePutSchema = z.object({
-  id: z.coerce.number().int().gte(0),
-})
