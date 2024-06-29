@@ -132,23 +132,17 @@ export const executeGraph = async (
     }
   })
 
-  console.log('Edge Structure:', JSON.stringify(edgeStruct, null, 2))
-
   const processNodeRecursive = async (
     nodeId: string,
     data: Record<string, any>
   ): Promise<any> => {
-    console.log('Processing node', nodeId)
     const node = hashNodes[nodeId]
     if (!node) {
-      console.log('Node not found:', nodeId)
       return null
     }
 
     let result: any = {}
     let nextNodeId: string | undefined
-
-    console.log('Node type:', node.type)
 
     switch (node.type) {
       case 'inputNode':
@@ -206,11 +200,8 @@ export const executeGraph = async (
         return result // End of path, return the result
 
       default:
-        console.log('Unhandled node type:', node.type)
+        console.error('Unhandled node type:', node.type)
     }
-
-    console.log('Node result:', result)
-    console.log('Next node:', nextNodeId)
 
     if (nextNodeId) {
       const nextResult = await processNodeRecursive(nextNodeId, {
@@ -225,6 +216,5 @@ export const executeGraph = async (
 
   // Start processing from the input node
   const finalResult = await processNodeRecursive(inputNode.id, inputData)
-  console.log('Final result:', finalResult)
   return finalResult
 }
