@@ -4,8 +4,8 @@ import { constants } from 'http2'
 import fs from 'fs'
 import path from 'path'
 import process from 'process'
-import { accessLogger, errorLogger } from 'zexpress/logging'
-import { responseTimeMiddleware } from 'zexpress/timing'
+import { accessLogger, errorLogger } from '../logging'
+import { responseTimeMiddleware } from '../timing'
 
 interface RouterPathTuple {
   router: Router
@@ -16,7 +16,7 @@ export const routers: RouterPathTuple[] = []
 
 const normalizeAPIPath = (registeredPath: string) => {
   function convertBracketsToColon(path: string): string {
-    return path.replace(/\[([^\[\]]+)\]/g, ':$1')
+    return path.replace(/\[([^\[\]]+)\]/g, ':$1').replace('/api/src', '')
   }
 
   return convertBracketsToColon(registeredPath)
@@ -55,6 +55,34 @@ export class ChainableRouter<
     return (async (req: Q, res: S, next: NextFunction) => {
       let loggedAlready = false
 
+      // Intercept the response methods
+      const originalJson = res.json
+      const originalSend = res.send
+      const originalEnd = res.end
+
+      const logResponse = () => {
+        if (!loggedAlready) {
+          accessLogger.info({
+            method: req.method,
+            httpVersion: req.httpVersion,
+            httpStatus: res.statusCode,
+            routePath: req.originalUrl,
+            ip: req.ip,
+          })
+          loggedAlready = true
+        }
+      }
+
+      res.json = function (body) {
+        logResponse()
+        return originalJson.call(this, body)
+      }
+
+      res.send = function (body) {
+        logResponse()
+        return originalSend.call(this, body)
+      }
+
       try {
         for (const m of this.middlewares) {
           if (res.headersSent) return
@@ -62,7 +90,7 @@ export class ChainableRouter<
         }
 
         if (res.headersSent) return
-        handler(req, res, next)
+        await handler(req, res, next)
       } catch (e) {
         const error = e instanceof Error ? e : new Error(String(e))
         res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
@@ -95,15 +123,6 @@ export class ChainableRouter<
         } else {
           return res.send({ status: 'error', message: 'Internal Server Error' })
         }
-      } finally {
-        if (loggedAlready) return
-        accessLogger.info({
-          method: req.method,
-          httpVersion: req.httpVersion,
-          httpStatus: res.statusCode,
-          routePath: req.originalUrl,
-          ip: req.ip,
-        })
       }
     }) as any as RequestHandler
   }

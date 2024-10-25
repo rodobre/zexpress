@@ -17,7 +17,7 @@ export const makeValidationError = (
 
 type DataCarryType<T> = { data: T }
 
-export const validateProperty = <T extends z.ZodObject<any, any, any>>(
+export const validateProperty = <T extends z.ZodTypeAny>(
   schema: T,
   propertyKey: 'params' | 'query' | 'body'
 ): ((req: Request, res: Response) => Promise<DataCarryType<z.infer<T>>>) => {
@@ -28,9 +28,16 @@ export const validateProperty = <T extends z.ZodObject<any, any, any>>(
         status: constants.HTTP_STATUS_BAD_REQUEST,
         json: { location: propertyKey, validationResult: result.error },
       })
-      return { data: {} }
+      return { data: {} as z.infer<T> }
     }
 
-    return { data: result.data }
+    return {
+      data: {
+        ...((req as Request & { data: Record<string, unknown> }).data
+          ? (req as Request & { data: Record<string, unknown> }).data
+          : {}),
+        ...result.data,
+      },
+    }
   }
 }
